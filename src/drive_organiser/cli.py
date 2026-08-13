@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import socket
 import sys
 from pathlib import Path
 
@@ -280,10 +282,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# httplib2, which carries every Drive call, has no timeout of its own and
+# inherits Python's default of None. Without this a stalled request blocks the
+# hourly loop forever while the container still reports healthy — and the loop
+# swallows exceptions, so nothing would ever restart it. This is a per-socket
+# read timeout, not a total transfer budget, so slow large downloads still work.
+SOCKET_TIMEOUT = 60
+
+
 def main(argv: list[str] | None = None) -> int:
+    socket.setdefaulttimeout(SOCKET_TIMEOUT)
     args = build_parser().parse_args(argv)
     logging.basicConfig(
-        level=getattr(logging, __import__("os").environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
+        level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
         format="%(asctime)s %(levelname)-7s %(message)s",
     )
     try:

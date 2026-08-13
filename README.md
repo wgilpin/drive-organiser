@@ -214,8 +214,6 @@ password manager exports, recovery kits — out of the inbox.
   the second with a ` (2)` suffix.
 - **Empty subfolders accumulate** in the inbox. The service account cannot delete
   them.
-- **A stalled Drive call blocks the loop.** `httplib2` has no default timeout, so
-  a hung request stops the schedule while the container still looks healthy.
 - **The container needs a login session.** OrbStack starts at login, not at boot.
   A rebooted machine sitting at the login window runs nothing.
 
