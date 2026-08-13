@@ -1,0 +1,18 @@
+# Secrets must never enter the build context — they arrive as mounts at runtime.
+.env
+secrets/
+config.toml
+
+.git/
+.venv/
+tests/
+docs/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Leftovers from the earlier local-mount tidy-up, unrelated to this job.
+merge.py
+main.py
+*_merge_journal.json
+*_merge_journal.undo.py

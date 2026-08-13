@@ -1,0 +1,20 @@
+services:
+  drive-organiser:
+    build: .
+    image: drive-organiser
+    container_name: drive-organiser
+    env_file: .env
+    environment:
+      # Overrides whatever .env says, so the hour boundary is local time.
+      TZ: Europe/London
+      GOOGLE_SERVICE_ACCOUNT_FILE: /app/secrets/service-account.json
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./secrets/service-account.json:/app/secrets/service-account.json:ro
+    restart: unless-stopped
+    # No ports. The job dials out and never listens.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

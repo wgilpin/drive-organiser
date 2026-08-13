@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Secrets — never commit
+.env
+secrets/
+*service-account*.json
+
+# Local config (contains Drive folder IDs); config.example.toml is committed
+config.toml

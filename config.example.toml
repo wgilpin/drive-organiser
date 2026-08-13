@@ -1,0 +1,56 @@
+# Template. Run `drive-organiser list-folders`, paste the ids it prints,
+# and save as config.toml (gitignored).
+#
+# Descriptions are the main lever over Gemini's choice of folder. Where two
+# folders could plausibly claim a document, say which wins — the negative
+# clauses below exist for that reason.
+
+[drive]
+inbox_folder_id    = "PASTE_INBOX_ID"
+unsorted_folder_id = "PASTE_UNSORTED_ID"
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Academic"
+description = "Research papers, journal articles, preprints, conference papers, lecture notes, course handouts, reading lists, theses, and university administration. Scholarly or teaching material, not personal admin."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Employment"
+description = "Employment contracts, job offers, payslips, P60 and P45 forms, appraisals, CVs, references, and correspondence with an employer's HR department. Work paperwork about you as an employee. Not pension scheme documents, which belong in Pensions."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Health & Medical"
+description = "Letters from a GP, hospital, dentist or optician, test and scan results, prescriptions, referrals, vaccination records, and health insurance policies and claims. Anything about someone's health or treatment."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Household Bills & Services"
+description = "Recurring bills and contracts for a home: gas, electricity, water, council tax, broadband, mobile and TV, rent or mortgage statements, home and contents insurance, and quotes or reports from tradespeople. Recurring domestic costs, not one-off purchases."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Invoices & Receipts"
+description = "Receipts and invoices for one-off purchases of goods or services, order and delivery confirmations, and product warranties. Use this only when no other folder fits the subject better. A recurring household bill belongs in Household Bills & Services; a pension or medical document belongs in its own folder even when it mentions money."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Tax & Banking"
+description = "Bank, savings, ISA and credit card statements, tax returns and self-assessment paperwork, HMRC correspondence, tax codes, National Insurance, and investment or share account statements. Documents about money held, owed to or owed by the tax authority — not receipts for individual purchases."
+
+[[destinations]]
+id          = "PASTE_FOLDER_ID"
+name        = "Pensions"
+description = "Anything from a pension provider or scheme: annual benefit and valuation statements, member and AGM notices, annual reports to members, transfer and consolidation paperwork, SIPP and workplace pension correspondence, retirement projections, and state pension forecasts."
+
+[gemini]
+# Model id lives in .env (GEMINI_MODEL); set it here only to override per-config.
+min_confidence = 0.6
+
+[limits]
+max_files_per_run = 50
+max_inline_bytes  = 20_000_000
+
+[email]
+email_on_empty = false
