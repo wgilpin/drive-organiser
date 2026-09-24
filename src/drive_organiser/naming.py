@@ -6,6 +6,7 @@ happens here. Kept separate so the awkward cases are cheap to test.
 
 from __future__ import annotations
 
+import mimetypes
 import re
 import unicodedata
 
@@ -21,6 +22,12 @@ FALLBACK_STEM = "untitled"
 
 # Extensions that carry a second dot and must not be split at the last one.
 COMPOUND = (".tar.gz", ".tar.bz2", ".tar.xz")
+
+# Built-in table only. The module-level mimetypes also reads the host's
+# /etc/mime.types, so the Mac and the container would name files differently.
+_MIME = mimetypes.MimeTypes(filenames=())
+# Says nothing about the format; guessing from it would give every file ".bin".
+_GENERIC_MIME = {"", "application/octet-stream"}
 
 
 def split_extension(name: str) -> tuple[str, str]:
@@ -59,14 +66,31 @@ def sanitise_stem(raw: str) -> str:
     return text
 
 
-def build_name(proposed_stem: str, original_name: str, *, is_native_google: bool) -> str:
+def _extension_from_mime(mime_type: str) -> str:
+    if mime_type in _GENERIC_MIME:
+        return ""
+    return _MIME.guess_extension(mime_type) or ""
+
+
+def build_name(proposed_stem: str, original_name: str, *, mime_type: str, is_native_google: bool) -> str:
     """Combine Gemini's proposed stem with the correct extension.
 
     Native Google files (Docs, Sheets, Slides) have no extension in their Drive
     name at all — the '.gdoc' suffix only exists in the desktop mount — so adding
     one would be wrong.
+
+    An uploaded file's name can lack its extension ("Knowledge Graphs") or end in
+    something that only looks like one ("Mock_V1.6"). When the tail is not a known
+    extension and the MIME type names one, the MIME type wins. An unknown tail
+    with no MIME answer stays, so ".gpx" survives as octet-stream.
     """
     original_stem, original_ext = split_extension(original_name)
+    from_mime = _extension_from_mime(mime_type)
+    known = bool(original_ext) and _MIME.guess_type(f"x{original_ext}")[0] is not None
+    if from_mime and not known:
+        if original_ext:
+            original_stem = original_name
+        original_ext = from_mime
 
     stem = sanitise_stem(proposed_stem) or sanitise_stem(original_stem) or FALLBACK_STEM
     extension = "" if is_native_google else original_ext

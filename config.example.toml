@@ -6,7 +6,9 @@
 # clauses below exist for that reason.
 
 [drive]
-inbox_folder_id    = "PASTE_INBOX_ID"
+# Every folder listed here is watched. The first is _Inbox; `check` looks
+# beside it for folders missing from this file.
+inbox_folder_ids   = ["PASTE_INBOX_ID"]
 unsorted_folder_id = "PASTE_UNSORTED_ID"
 
 [[destinations]]

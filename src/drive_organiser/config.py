@@ -38,7 +38,8 @@ class Destination:
 
 @dataclass(frozen=True)
 class DriveConfig:
-    inbox_folder_id: str
+    # The first inbox is the primary: `check` looks beside it for unlisted folders.
+    inbox_folder_ids: tuple[str, ...]
     unsorted_folder_id: str
     destinations: tuple[Destination, ...]
     gemini_model: str | None
@@ -49,7 +50,8 @@ class DriveConfig:
 
     def folder_ids(self) -> dict[str, str]:
         """Every configured folder id -> a human label, for validation messages."""
-        ids = {self.inbox_folder_id: "inbox", self.unsorted_folder_id: "_Unsorted"}
+        ids = {i: "inbox" for i in self.inbox_folder_ids}
+        ids[self.unsorted_folder_id] = "_Unsorted"
         for d in self.destinations:
             ids[d.id] = d.name
         return ids
@@ -98,6 +100,23 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> DriveConfig:
     return parse_config(path.read_text(encoding="utf-8"), source=str(path))
 
 
+def _inbox_ids(drive: dict, source: str) -> tuple[str, ...]:
+    """inbox_folder_ids is a list. The older single inbox_folder_id still loads."""
+    if "inbox_folder_ids" in drive and "inbox_folder_id" in drive:
+        raise ConfigError(f"{source}: set [drive].inbox_folder_ids or inbox_folder_id, not both.")
+    raw = drive.get("inbox_folder_ids", drive.get("inbox_folder_id", ""))
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        raise ConfigError(f"{source}: [drive].inbox_folder_ids must be a list of folder ids.")
+    ids = tuple(str(i).strip() for i in raw)
+    if not ids or not all(ids):
+        raise ConfigError(f"{source}: [drive].inbox_folder_ids is missing or holds an empty id.")
+    if len(set(ids)) != len(ids):
+        raise ConfigError(f"{source}: an inbox id appears more than once in [drive].inbox_folder_ids.")
+    return ids
+
+
 def parse_config(text: str, *, source: str = "<string>") -> DriveConfig:
     """Split out from load_config so it is testable without touching the disk."""
     try:
@@ -109,9 +128,9 @@ def parse_config(text: str, *, source: str = "<string>") -> DriveConfig:
     if not isinstance(drive, dict):
         raise ConfigError(f"{source} is missing the [drive] section.")
 
-    for key in ("inbox_folder_id", "unsorted_folder_id"):
-        if not str(drive.get(key, "")).strip():
-            raise ConfigError(f"{source}: [drive].{key} is missing or empty.")
+    inboxes = _inbox_ids(drive, source)
+    if not str(drive.get("unsorted_folder_id", "")).strip():
+        raise ConfigError(f"{source}: [drive].unsorted_folder_id is missing or empty.")
 
     raw_dests = raw.get("destinations") or []
     if not raw_dests:
@@ -133,10 +152,14 @@ def parse_config(text: str, *, source: str = "<string>") -> DriveConfig:
             Destination(id=d["id"].strip(), name=d["name"].strip(), description=d["description"].strip())
         )
 
-    inbox = drive["inbox_folder_id"].strip()
     unsorted = drive["unsorted_folder_id"].strip()
-    if inbox in seen:
-        raise ConfigError(f"{source}: the inbox is also listed as a destination. Files would never leave it.")
+    for inbox in inboxes:
+        if inbox in seen:
+            raise ConfigError(
+                f"{source}: inbox {inbox} is also listed as a destination. Files would never leave it."
+            )
+        if inbox == unsorted:
+            raise ConfigError(f"{source}: inbox {inbox} is also _Unsorted. Low-confidence files would loop.")
     if unsorted in seen:
         raise ConfigError(f"{source}: _Unsorted is also listed as a destination. Remove it from [[destinations]].")
 
@@ -149,7 +172,7 @@ def parse_config(text: str, *, source: str = "<string>") -> DriveConfig:
         raise ConfigError(f"{source}: [gemini].min_confidence must be between 0 and 1.")
 
     return DriveConfig(
-        inbox_folder_id=inbox,
+        inbox_folder_ids=inboxes,
         unsorted_folder_id=unsorted,
         destinations=tuple(destinations),
         gemini_model=(gemini.get("model") or "").strip() or None,

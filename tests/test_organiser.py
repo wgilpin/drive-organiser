@@ -8,6 +8,7 @@ import pytest
 from fakes import FakeDrive, FakeNamer, make_file, make_folder
 
 from drive_organiser.config import parse_config
+from drive_organiser.gemini import UNSORTED
 from drive_organiser.organiser import DRY_RUN, FAILED, MOVED, SKIPPED, organise
 
 CONFIG = """
@@ -96,6 +97,13 @@ class TestRouting:
         result = organise(FakeDrive(), FakeNamer(confidence=0.1), cfg, dry_run=True)
         assert result.outcomes[0].unsorted is True
 
+    def test_the_routing_note_does_not_hide_why_content_was_missing(self, cfg):
+        """Seen in a real dry run: a 26 MB PDF showed only 'model chose _Unsorted'."""
+        drive = FakeDrive(children=[make_file(size=cfg.max_inline_bytes + 1)])
+        note = organise(drive, FakeNamer(folder_id=UNSORTED), cfg, dry_run=True).outcomes[0].note
+        assert "model chose _Unsorted" in note
+        assert "exceeds the inline limit" in note
+
 
 class TestIsolation:
     def test_one_failing_file_does_not_abort_the_run(self, cfg):
@@ -138,6 +146,16 @@ class TestSkipping:
         )
         result = organise(drive, FakeNamer(), cfg, dry_run=True)
         assert len(result.outcomes) == 1
+
+
+class TestSeveralInboxes:
+    def test_files_from_every_inbox_are_filed(self):
+        cfg = parse_config(CONFIG.replace('inbox_folder_id    = "inbox1"', 'inbox_folder_ids = ["inbox1", "inbox2"]'))
+        drive = FakeDrive(
+            children=[make_file("f1", "a.pdf", parents=("inbox1",)), make_file("f2", "b.pdf", parents=("inbox2",))]
+        )
+        organise(drive, FakeNamer(), cfg, dry_run=False)
+        assert dict(drive.detached) == {"f1": ("inbox1",), "f2": ("inbox2",)}
 
 
 class TestNestedFolders:

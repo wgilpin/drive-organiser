@@ -64,6 +64,12 @@ def test_a_subfolder_of_a_destination_is_not_reported():
     assert find_unconfigured(folders, parse_config(CONFIG)) == []
 
 
+def test_a_second_inbox_elsewhere_is_neither_reported_nor_used_for_siblings():
+    cfg = parse_config(CONFIG.replace('inbox_folder_id    = "inbox1"', 'inbox_folder_ids = ["inbox1", "scans"]'))
+    folders = [*BASE, folder("scans", "Scans", parent="other"), folder("photos", "Photos", parent="other")]
+    assert find_unconfigured(folders, cfg) == []
+
+
 def test_returns_nothing_when_the_inbox_is_not_visible():
     """Without the inbox there is no way to know which folder is the ancestor."""
     folders = [f for f in BASE if f.id != "inbox1"]

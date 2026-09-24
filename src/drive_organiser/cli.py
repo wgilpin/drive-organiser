@@ -47,12 +47,16 @@ def cmd_list_folders(_args: argparse.Namespace) -> int:
     by_name = {f.name: f for f in folders}
     print(f"# Folders visible to {drive.account_email}\n")
     print("[drive]")
-    for label, key in (("_Inbox", "inbox_folder_id"), ("_Unsorted", "unsorted_folder_id")):
-        found = by_name.get(label)
-        if found:
-            print(f'{key:<20}= "{found.id}"')
-        else:
-            print(f'{key:<20}= ""  # NOT FOUND: create a folder named {label}')
+    inbox = by_name.get("_Inbox")
+    if inbox:
+        print(f'{"inbox_folder_ids":<20}= ["{inbox.id}"]  # add more ids to watch more folders')
+    else:
+        print(f'{"inbox_folder_ids":<20}= []  # NOT FOUND: create a folder named _Inbox')
+    unsorted = by_name.get("_Unsorted")
+    if unsorted:
+        print(f'{"unsorted_folder_id":<20}= "{unsorted.id}"')
+    else:
+        print(f'{"unsorted_folder_id":<20}= ""  # NOT FOUND: create a folder named _Unsorted')
 
     # The shared ancestor is a container, not a destination. Filing into it would
     # scatter files next to the machinery folders, so drop it from the suggestions.
@@ -86,11 +90,12 @@ def cmd_list_folders(_args: argparse.Namespace) -> int:
 def find_unconfigured(folders: list[DriveFile], cfg: DriveConfig) -> list[DriveFile]:
     """Folders sitting alongside the configured ones but absent from config.toml.
 
-    Only siblings of _Inbox count. A folder nested inside a destination is a
-    subfolder of that destination, not a missed one, and reporting it is noise.
+    Only siblings of the first inbox count. A folder nested inside a destination
+    is a subfolder of that destination, not a missed one, and reporting it is
+    noise. Further inboxes can sit anywhere, so their siblings say nothing.
     """
     configured = set(cfg.folder_ids())
-    inbox = next((f for f in folders if f.id == cfg.inbox_folder_id), None)
+    inbox = next((f for f in folders if f.id == cfg.inbox_folder_ids[0]), None)
     if inbox is None:
         return []
     ancestors = set(inbox.parents)
@@ -152,7 +157,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         print("Run 'drive-organiser list-folders' to get their ids.")
 
     # Counts nested files too, or it disagrees with what `run` actually processes.
-    waiting = drive.walk_files(cfg.inbox_folder_id)
+    waiting = [hit for inbox in cfg.inbox_folder_ids for hit in drive.walk_files(inbox)]
     nested = sum(1 for _, path in waiting if path)
     detail = f" ({nested} in subfolders)" if nested else ""
     print(f"inbox           : {len(waiting)} file(s) waiting{detail}")

@@ -28,7 +28,7 @@ max_files_per_run = 10
 
 def test_parses_a_good_config():
     cfg = parse_config(GOOD)
-    assert cfg.inbox_folder_id == "inbox1"
+    assert cfg.inbox_folder_ids == ("inbox1",)
     assert cfg.unsorted_folder_id == "unsorted1"
     assert len(cfg.destinations) == 1
     assert cfg.destinations[0].name == "Academic"
@@ -60,6 +60,33 @@ def test_folder_ids_maps_every_configured_folder():
     assert ids == {"inbox1": "inbox", "unsorted1": "_Unsorted", "dest1": "Academic"}
 
 
+def test_accepts_a_list_of_inboxes():
+    cfg = parse_config(GOOD.replace('inbox_folder_id    = "inbox1"', 'inbox_folder_ids = ["inbox1", "inbox2"]'))
+    assert cfg.inbox_folder_ids == ("inbox1", "inbox2")
+    assert cfg.folder_ids()["inbox2"] == "inbox"
+
+
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        ('inbox_folder_ids = []', "missing"),
+        ('inbox_folder_ids = ["inbox1", ""]', "empty id"),
+        ('inbox_folder_ids = ["inbox1", "inbox1"]', "more than once"),
+        ('inbox_folder_ids = "inbox1"\ninbox_folder_id = "inbox1"', "not both"),
+        ('inbox_folder_ids = ["unsorted1"]', "also _Unsorted"),
+    ],
+)
+def test_rejects_a_bad_inbox_list(line, message):
+    with pytest.raises(ConfigError, match=message):
+        parse_config(GOOD.replace('inbox_folder_id    = "inbox1"', line))
+
+
+def test_rejects_a_second_inbox_listed_as_a_destination():
+    text = GOOD.replace('inbox_folder_id    = "inbox1"', 'inbox_folder_ids = ["inbox1", "dest1"]')
+    with pytest.raises(ConfigError, match="dest1 is also listed as a destination"):
+        parse_config(text)
+
+
 def test_rejects_invalid_toml():
     with pytest.raises(ConfigError, match="not valid TOML"):
         parse_config("[drive")
@@ -70,10 +97,12 @@ def test_rejects_missing_drive_section():
         parse_config('[[destinations]]\nid="d"\nname="N"\ndescription="D"')
 
 
-@pytest.mark.parametrize("key", ["inbox_folder_id", "unsorted_folder_id"])
-def test_rejects_missing_drive_key(key):
+@pytest.mark.parametrize(
+    ("key", "message"), [("inbox_folder_id", "inbox_folder_ids"), ("unsorted_folder_id", "unsorted_folder_id")]
+)
+def test_rejects_missing_drive_key(key, message):
     text = GOOD.replace(f'{key}    = ', f'{key}_x = ').replace(f'{key} = ', f'{key}_x = ')
-    with pytest.raises(ConfigError, match=key):
+    with pytest.raises(ConfigError, match=message):
         parse_config(text)
 
 

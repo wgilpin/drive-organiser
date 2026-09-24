@@ -183,7 +183,7 @@ docker compose logs -f
 
 | Key | Meaning |
 |---|---|
-| `[drive]` | `inbox_folder_id`, `unsorted_folder_id` |
+| `[drive]` | `inbox_folder_ids` (a list; every folder in it is watched), `unsorted_folder_id`. The older single `inbox_folder_id` still works. |
 | `[[destinations]]` | `id`, `name`, `description` — one block per folder |
 | `min_confidence` | Below this, a file goes to `_Unsorted`. Default 0.6. |
 | `max_files_per_run` | Cap per run. Default 50. |

@@ -85,9 +85,9 @@ def _destination_names(cfg: DriveConfig) -> dict[str, str]:
 def organise(
     drive: DriveClient, namer: GeminiNamer, cfg: DriveConfig, *, dry_run: bool = False
 ) -> RunResult:
-    # Files nested in subfolders of the inbox count too. The subfolder is ignored:
+    # Files nested in subfolders of an inbox count too. The subfolder is ignored:
     # it is neither moved nor used as a hint about where the file belongs.
-    found = drive.walk_files(cfg.inbox_folder_id)
+    found = [hit for inbox in cfg.inbox_folder_ids for hit in drive.walk_files(inbox)]
     files = [f for f, _ in found]
     source_of = {f.id: path for f, path in found}
 
@@ -140,7 +140,12 @@ def _plan_one(
         taken[dest_id] = drive.child_names(dest_id)
 
     new_name = dedupe(
-        build_name(proposal.decision.filename, file.name, is_native_google=file.is_native_google),
+        build_name(
+            proposal.decision.filename,
+            file.name,
+            mime_type=file.mime_type,
+            is_native_google=file.is_native_google,
+        ),
         taken[dest_id],
     )
     taken[dest_id].add(new_name)
@@ -154,7 +159,9 @@ def _plan_one(
         reason=proposal.decision.reason,
         confidence=proposal.decision.confidence,
         unsorted=proposal.routed_to_unsorted,
-        note=proposal.routing_note or payload.note,
+        # Both, not either: "model chose _Unsorted" alone hides that the model
+        # saw only metadata because the file was too big to send.
+        note="; ".join(n for n in (proposal.routing_note, payload.note) if n),
     )
 
 
