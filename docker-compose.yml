@@ -11,7 +11,9 @@ services:
     volumes:
       - ./config.toml:/app/config.toml:ro
       - ./secrets/service-account.json:/app/secrets/service-account.json:ro
-    restart: unless-stopped
+    # "always", not "unless-stopped": a manual stop must not outlive a daemon
+    # restart. To keep it down, comment out the service.
+    restart: always
     # No ports. The job dials out and never listens.
     logging:
       driver: json-file
