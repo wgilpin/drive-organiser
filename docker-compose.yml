@@ -3,18 +3,21 @@ services:
     build: .
     image: drive-organiser
     container_name: drive-organiser
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     env_file: .env
     environment:
-      # Overrides whatever .env says, so the hour boundary is local time.
       TZ: Europe/London
       GOOGLE_SERVICE_ACCOUNT_FILE: /app/secrets/service-account.json
     volumes:
       - ./config.toml:/app/config.toml:ro
       - ./secrets/service-account.json:/app/secrets/service-account.json:ro
-    # "always", not "unless-stopped": a manual stop must not outlive a daemon
-    # restart. To keep it down, comment out the service.
     restart: always
-    # No ports. The job dials out and never listens.
     logging:
       driver: json-file
       options:
